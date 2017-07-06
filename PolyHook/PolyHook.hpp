@@ -12,7 +12,14 @@
 #include <assert.h>
 #pragma comment(lib,"Dbghelp.lib")
 #pragma comment(lib,"capstone.lib")
+#include <memory>
 #define PLH_SHOW_DEBUG_MESSAGES 1 //To print messages even in release
+#if _MSC_VER <= 1800
+#define noexcept
+#define USE_DEFAULT
+#else
+#define USE_DEFAULT =default
+#endif
 
 namespace PLH {
 	namespace Tools
@@ -196,7 +203,7 @@ namespace PLH {
 			//Sanity check the delta is less than 2GB
 			if (Allocated != nullptr)
 			{
-				AllocationDelta = std::abs(pStart - Allocated);
+				AllocationDelta = std::abs(pStart - (uint8_t*) Allocated);
 				if (AllocationDelta > MaxAllocationDelta)
 				{
 					//Out of range, free then return
@@ -278,7 +285,7 @@ namespace PLH {
 		};
 		RuntimeError();
 		RuntimeError(Severity Sev, const std::string& Msg);
-		virtual ~RuntimeError() = default;
+		virtual ~RuntimeError() {}
 		const Severity GetSeverity() const;
 		const std::string GetString() const;
 	private:
@@ -300,12 +307,12 @@ namespace PLH {
 	class IHook
 	{
 	public:
-		IHook() = default;
-		IHook(IHook&& other) = default; //move
-		IHook& operator=(IHook&& other) = default;//move assignment
+		IHook() {}
+		IHook(IHook&& other) USE_DEFAULT; //move
+		IHook& operator=(IHook&& other) USE_DEFAULT;//move assignment
+		virtual ~IHook() {}
 		IHook(const IHook& other) = delete; //copy
 		IHook& operator=(const IHook& other) = delete; //copy assignment
-		virtual ~IHook() = default;
 
 		virtual bool Hook() = 0;
 		virtual void UnHook() = 0;
@@ -341,13 +348,18 @@ namespace PLH {
 		{
 			return (T)m_Trampoline;
 		}
+
+		uint32_t m_PreserveSize;
+		uint8_t* m_RestoreCode;
+		uint32_t m_RestoreCodeSize;
+
 	protected:
 		template<typename T>
 		T CalculateRelativeDisplacement(uintptr_t From,uintptr_t To, uint_fast32_t InsSize)
 		{
 			if (To < From)
-				return 0 - (From - To) - InsSize;
-			return To - (From + InsSize);
+				return (T) (0 - (From - To) - InsSize);
+			return (T) (To - (From + InsSize));
 		}
 		uint_fast32_t CalculateLength(uint8_t* Src, uint_fast32_t NeededLength);
 		void RelocateASM(uint8_t* Code, uint_fast32_t* CodeSize, const uintptr_t From, const uintptr_t To);
@@ -355,7 +367,7 @@ namespace PLH {
 		void RelocateConditionalJMP(cs_insn* CurIns, uint_fast32_t* CodeSize, const uintptr_t From, const uintptr_t To, const uint8_t DispSize, const uint8_t DispOffset);
 		virtual x86_reg GetIpReg() = 0;
 		virtual void FreeTrampoline() = 0;
-		virtual void WriteJMP(uintptr_t From, uintptr_t To) = 0;
+		virtual void WriteJMP(const uintptr_t From, const uintptr_t To) = 0;
 		virtual int GetJMPSize() = 0;
 		void FlushSrcInsCache();
 		void Initialize(cs_mode Mode);
@@ -381,8 +393,8 @@ namespace PLH {
 	public:
 		friend class VFuncDetour;
 		X86Detour();
-		X86Detour(X86Detour&& other) = default; //move
-		X86Detour& operator=(X86Detour&& other) = default;//move assignment
+		X86Detour(X86Detour&& other) USE_DEFAULT; //move
+		X86Detour& operator=(X86Detour&& other) USE_DEFAULT;//move assignment
 		X86Detour(const X86Detour& other) = delete; //copy
 		X86Detour& operator=(const X86Detour& other) = delete; //copy assignment
 		virtual ~X86Detour();
@@ -392,7 +404,7 @@ namespace PLH {
 	protected:
 		virtual x86_reg GetIpReg() override;
 		virtual void FreeTrampoline();
-		virtual void WriteJMP(uintptr_t From, uintptr_t To);
+		virtual void WriteJMP(const uintptr_t From, const uintptr_t To);
 		virtual int GetJMPSize();
 	private:
 		void WriteRelativeJMP(uintptr_t Destination, uintptr_t JMPDestination);
@@ -407,8 +419,8 @@ namespace PLH {
 		friend class VFuncDetour;
 		//Credits DarthTon, evolution536
 		X64Detour();
-		X64Detour(X64Detour&& other) = default; //move
-		X64Detour& operator=(X64Detour&& other) = default;//move assignment
+		X64Detour(X64Detour&& other) USE_DEFAULT; //move
+		X64Detour& operator=(X64Detour&& other) USE_DEFAULT;//move assignment
 		X64Detour(const X64Detour& other) = delete; //copy
 		X64Detour& operator=(const X64Detour& other) = delete; //copy assignment
 		virtual ~X64Detour();
@@ -430,8 +442,8 @@ namespace PLH {
 	{
 	public:
 		VFuncSwap();
-		VFuncSwap(VFuncSwap&& other) = default;
-		VFuncSwap& operator=(VFuncSwap&& other) = default;
+		VFuncSwap(VFuncSwap&& other) USE_DEFAULT;
+		VFuncSwap& operator=(VFuncSwap&& other) USE_DEFAULT;
 		VFuncSwap(const VFuncSwap& other) = delete;
 		VFuncSwap& operator=(const VFuncSwap& other) = delete;
 		virtual ~VFuncSwap();
@@ -459,8 +471,8 @@ namespace PLH {
 	{
 	public:
 		VFuncDetour();
-		VFuncDetour(VFuncDetour&& other) = default; //move
-		VFuncDetour& operator=(VFuncDetour&& other) = default;//move assignment
+		VFuncDetour(VFuncDetour&& other) USE_DEFAULT; //move
+		VFuncDetour& operator=(VFuncDetour&& other) USE_DEFAULT;//move assignment
 		VFuncDetour(const VFuncDetour& other) = delete; //copy
 		VFuncDetour& operator=(const VFuncDetour& other) = delete; //copy assignment
 		virtual ~VFuncDetour();
@@ -496,8 +508,8 @@ namespace PLH {
 	{
 	public:
 		VTableSwap();
-		VTableSwap(VTableSwap&& other) = default; //move
-		VTableSwap& operator=(VTableSwap&& other) = default;//move assignment
+		VTableSwap(VTableSwap&& other) USE_DEFAULT; //move
+		VTableSwap& operator=(VTableSwap&& other) USE_DEFAULT;//move assignment
 		VTableSwap(const VTableSwap& other) = delete; //copy
 		VTableSwap& operator=(const VTableSwap& other) = delete; //copy assignment
 		virtual ~VTableSwap();
@@ -541,8 +553,8 @@ namespace PLH {
 	{
 	public:
 		IATHook();
-		IATHook(IATHook&& other) = default; //move
-		IATHook& operator=(IATHook&& other) = default;//move assignment
+		IATHook(IATHook&& other) USE_DEFAULT; //move
+		IATHook& operator=(IATHook&& other) USE_DEFAULT;//move assignment
 		IATHook(const IATHook& other) = delete; //copy
 		IATHook& operator=(const IATHook& other) = delete; //copy assignment
 		virtual ~IATHook();
@@ -611,8 +623,8 @@ namespace PLH {
 			ERROR_TYPE
 		};
 		VEHHook();
-		VEHHook(VEHHook&& other) = default; //move
-		VEHHook& operator=(VEHHook&& other) = default;//move assignment
+		VEHHook(VEHHook&& other) USE_DEFAULT; //move
+		VEHHook& operator=(VEHHook&& other) USE_DEFAULT;//move assignment
 		VEHHook(const VEHHook& other) = delete; //copy
 		VEHHook& operator=(const VEHHook& other) = delete; //copy assignment
 		virtual ~VEHHook();
@@ -628,20 +640,20 @@ namespace PLH {
 		}
 		void SetupHook(uint8_t* Src, uint8_t* Dest, VEHMethod Method);
 
-		auto GetProtectionObject()
-		{
-			//Return an object to restore INT3_BP after callback is done
-			return finally([&]() {
-				if (m_ThisCtx.m_Type == VEHMethod::INT3_BP)
-				{
-					MemoryProtect Protector(m_ThisCtx.m_Src, 1, PAGE_EXECUTE_READWRITE);
-					*m_ThisCtx.m_Src = 0xCC;
-				}else if (m_ThisCtx.m_Type == VEHMethod::GUARD_PAGE) {
-					DWORD OldProtection;
-					VirtualProtect(m_ThisCtx.m_Src, 1, PAGE_EXECUTE_READWRITE | PAGE_GUARD, &OldProtection);
-				}
-			});
-		}
+// 		auto GetProtectionObject()
+// 		{
+// 			//Return an object to restore INT3_BP after callback is done
+// 			return finally([&]() {
+// 				if (m_ThisCtx.m_Type == VEHMethod::INT3_BP)
+// 				{
+// 					MemoryProtect Protector(m_ThisCtx.m_Src, 1, PAGE_EXECUTE_READWRITE);
+// 					*m_ThisCtx.m_Src = 0xCC;
+// 				}else if (m_ThisCtx.m_Type == VEHMethod::GUARD_PAGE) {
+// 					DWORD OldProtection;
+// 					VirtualProtect(m_ThisCtx.m_Src, 1, PAGE_EXECUTE_READWRITE | PAGE_GUARD, &OldProtection);
+// 				}
+// 			});
+// 		}
 	protected:
 		struct HookCtx {
 			VEHMethod m_Type;
@@ -751,7 +763,9 @@ PLH::RuntimeError PLH::IHook::GetLastError() const
 	return m_LastError;
 }
 
-PLH::AbstractDetour::AbstractDetour() :IHook(), m_NeedFree(false), m_Hooked(false)
+PLH::AbstractDetour::AbstractDetour() :
+	IHook(), m_NeedFree(false), m_Hooked(false), 
+	m_PreserveSize(0), m_RestoreCode(NULL), m_RestoreCodeSize(0)
 {
 #ifdef _WIN64
 	Initialize(CS_MODE_64);
@@ -883,17 +897,17 @@ void PLH::AbstractDetour::_Relocate(cs_insn* CurIns, const uintptr_t From, const
 	if (DispType == ASMHelper::DISP::D_INT8)
 	{
 		int8_t Disp = m_ASMInfo.GetDisplacement<int8_t>(CurIns->bytes, DispOffset);
-		Disp -= (To - From);
+		Disp -= (int8_t) (To - From);
 		*(int8_t*)(CurIns->address + DispOffset) = Disp;
 	}
 	else if (DispType == ASMHelper::DISP::D_INT16) {
 		int16_t Disp = m_ASMInfo.GetDisplacement<int16_t>(CurIns->bytes, DispOffset);
-		Disp -= (To - From);
+		Disp -= (int16_t) (To - From);
 		*(int16_t*)(CurIns->address + DispOffset) = Disp;
 	}
 	else if (DispType == ASMHelper::DISP::D_INT32) {
 		int32_t Disp = m_ASMInfo.GetDisplacement<int32_t>(CurIns->bytes, DispOffset);
-		Disp -= (To - From);
+		Disp -= (int32_t) (To - From);
 		*(int32_t*)(CurIns->address + DispOffset) = Disp;
 	}
 }
@@ -907,7 +921,11 @@ void PLH::AbstractDetour::FlushSrcInsCache()
 	FlushInstructionCache(GetCurrentProcess(), m_hkSrc, m_OriginalLength);
 
 	//Flush trampoline
-	FlushInstructionCache(GetCurrentProcess(), m_Trampoline, m_hkLength);
+	uint32_t trampolineCodeSize = m_hkLength + 16;
+	if (m_RestoreCodeSize > 0)
+		trampolineCodeSize += m_RestoreCodeSize + 16;
+
+	FlushInstructionCache(GetCurrentProcess(), m_Trampoline, trampolineCodeSize);
 }
 
 void PLH::AbstractDetour::Initialize(cs_mode Mode)
@@ -1115,19 +1133,30 @@ bool PLH::X64Detour::Hook()
 	m_NeedFree = true;
 
 	//Decide which jmp type to use based on function size
+	uint32_t preserveLen = 0;
+	if (m_PreserveSize != 0)
+	{
+		preserveLen = CalculateLength(m_hkSrc, m_PreserveSize);
+		if (preserveLen == 0)
+			return false;
+	}
+	
 	bool UseRelativeJmp = false;
-	m_hkLength = CalculateLength(m_hkSrc, 16); //More stable 16 byte jmp
-	m_OriginalLength = m_hkLength; //We modify hkLength in Relocation routine
-	if (m_hkLength == 0)
+	uint32_t jmpLen = CalculateLength(m_hkSrc + preserveLen, 16); //More stable 16 byte jmp
+	if (jmpLen == 0)
 	{
 		UseRelativeJmp = true;
-		m_hkLength = CalculateLength(m_hkSrc, 6); //Smaller, less safe 6 byte (jmp could be out of bounds)
-		if (m_hkLength == 0)
+		jmpLen = CalculateLength(m_hkSrc + preserveLen, 6); //Smaller, less safe 6 byte (jmp could be out of bounds)
+		if (jmpLen == 0)
 		{
 			PostError(RuntimeError(RuntimeError::Severity::UnRecoverable, "PolyHook x64Detour: Function to small to hook"));
 			return false;
 		}
 	}
+
+	m_hkLength = preserveLen + jmpLen;
+	m_OriginalLength = m_hkLength; //We modify hkLength in Relocation routine
+
 	//TO-DO: Add single step support in case processes RIP is on/in the section we write to
 	Tools::ThreadManager ThreadMngr;
 	ThreadMngr.SuspendThreads();
@@ -1139,21 +1168,32 @@ bool PLH::X64Detour::Hook()
 	RelocateASM(m_Trampoline, &m_hkLength, (uintptr_t)m_hkSrc, (uintptr_t)m_Trampoline);
 	//Write the jmp from our trampoline back to the original
 
+	uintptr_t destOfSrc = (uintptr_t)m_hkDest;
+	uint32_t trampolineOffset = m_hkLength + 16;
+	if (m_RestoreCodeSize > 0)
+	{
+		memcpy(m_Trampoline + trampolineOffset, m_RestoreCode, m_RestoreCodeSize);
+		WriteAbsoluteJMP((uintptr_t) m_Trampoline + trampolineOffset + m_RestoreCodeSize, (uintptr_t)m_hkDest);
+		destOfSrc = (uintptr_t) (m_Trampoline + trampolineOffset);
+		trampolineOffset += m_RestoreCodeSize + 16;
+	}
+
 	// Build a far jump to the Destination function. (jmps not to address pointed at but to the value in the address)
 	MemoryProtect Protector(m_hkSrc, m_hkLength, PAGE_EXECUTE_READWRITE);
-	int HookSize = 0;
+	int HookSize = preserveLen;
 	if (UseRelativeJmp)
 	{
-		HookSize = 6;
-		m_hkSrc[0] = 0xFF;
-		m_hkSrc[1] = 0x25;
+		HookSize += 6;
+		m_hkSrc[preserveLen + 0] = 0xFF;
+		m_hkSrc[preserveLen + 1] = 0x25;
+
 		//Write 32Bit Displacement from rip
-		*(long*)(m_hkSrc + 2) = CalculateRelativeDisplacement<long>((uintptr_t)m_hkSrc, (uintptr_t)&m_Trampoline[m_hkLength + 16], 6);
-		*(uintptr_t*)&m_Trampoline[m_hkLength + 16] = (uintptr_t)m_hkDest; //Write the address into memory at [RIP+Displacement]
+		*(long*)(m_hkSrc + preserveLen + 2) = CalculateRelativeDisplacement<long>((uintptr_t)m_hkSrc + preserveLen, (uintptr_t)&m_Trampoline[trampolineOffset], 6);
+		*(uintptr_t*)&m_Trampoline[trampolineOffset] = destOfSrc; //Write the address into memory at [RIP+Displacement]
 	}
 	else {
-		HookSize = 16;
-		WriteAbsoluteJMP((uintptr_t)m_hkSrc, (uintptr_t)m_hkDest);
+		HookSize += 16;
+		WriteAbsoluteJMP((uintptr_t)m_hkSrc + preserveLen, destOfSrc);
 	}
 	//Nop Extra bytes from overwritten opcode
 	for (uint_fast16_t i = HookSize; i < m_OriginalLength; i++)
@@ -1550,7 +1590,7 @@ bool PLH::VEHHook::Hook()
 		bool FoundReg = false;
 		for (; RegIndex < 4; RegIndex++)
 		{
-			if ((Ctx.Dr7 & (1 << (RegIndex * 2))) == 0)
+			if ((Ctx.Dr7 & (1ll << (RegIndex * 2))) == 0)
 			{
 				FoundReg = true;
 				break;
@@ -1581,7 +1621,7 @@ bool PLH::VEHHook::Hook()
 			return false;
 		}
 		//Turn a local register on
-		Ctx.Dr7 |= 1 << (2 * RegIndex);
+		Ctx.Dr7 |= 1ll << (2 * RegIndex);
 		m_ThisCtx.m_StorageByte = RegIndex;
 		//Still need to call suspend thread *TODO*
 		if (!SetThreadContext(GetCurrentThread(), &Ctx))
@@ -1741,7 +1781,7 @@ PLH::MemoryProtect::MemoryProtect(void* Address, size_t Size, DWORD ProtectionFl
 
 bool PLH::MemoryProtect::Protect(void* Address, size_t Size, DWORD ProtectionFlags)
 {
-	return VirtualProtect(Address, Size, ProtectionFlags, &m_OldProtection);
+	return VirtualProtect(Address, Size, ProtectionFlags, &m_OldProtection) != 0;
 }
 
 PLH::MemoryProtect::~MemoryProtect()
