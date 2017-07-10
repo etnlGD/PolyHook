@@ -348,6 +348,8 @@ namespace PLH {
 		{
 			return (T)m_Trampoline;
 		}
+		
+		uint8_t* GetSourcePtr() { return m_hkSrc; }
 
 		uint32_t m_PreserveSize;
 		uint8_t* m_RestoreCode;
