@@ -11,7 +11,7 @@
 #include <TlHelp32.h>
 #include <assert.h>
 #pragma comment(lib,"Dbghelp.lib")
-#pragma comment(lib,"capstone.lib")
+#pragma comment(lib,"capstone_dll.lib")
 #include <memory>
 #define PLH_SHOW_DEBUG_MESSAGES 1 //To print messages even in release
 #if _MSC_VER <= 1800
