@@ -11,7 +11,6 @@
 #include <TlHelp32.h>
 #include <assert.h>
 #pragma comment(lib,"Dbghelp.lib")
-#pragma comment(lib,"capstone_dll.lib")
 #include <memory>
 #define PLH_SHOW_DEBUG_MESSAGES 1 //To print messages even in release
 #if _MSC_VER <= 1800
@@ -688,7 +687,7 @@ void PLH::AbstractDetour::RelocateASM(uint8_t* Code, uint_fast32_t* CodeSize, co
 
 	PLH::Tools::XTrace("\nFixed Trampoline\n");
 	InstructionCount = cs_disasm(m_CapstoneHandle, Code, *CodeSize, (uint64_t)Code, 0, &InstructionInfo);
-	for (int i = 0; i < InstructionCount; i++)
+	for (size_t i = 0; i < InstructionCount; i++)
 	{
 		cs_insn* CurIns = (cs_insn*)&InstructionInfo[i];
 
@@ -758,25 +757,25 @@ void PLH::AbstractDetour::RelocateConditionalJMP(cs_insn* CurIns, uint_fast32_t*
 	if (DispType == ASMHelper::DISP::D_INT8)
 	{
 		int8_t Disp = m_ASMInfo.GetDisplacement<int8_t>(CurIns->bytes, DispOffset);
-		uintptr_t OriginalDestination = CurIns->address + (Disp - (To - From)) + CurIns->size;
+		uintptr_t OriginalDestination = (uintptr_t) (CurIns->address + (Disp - (To - From)) + CurIns->size);
 		WriteJMP(TrampolineEnd, OriginalDestination);
-		Disp = CalculateRelativeDisplacement<int8_t>(CurIns->address, TrampolineEnd, CurIns->size); //set relative jmp to go to our absolute
+		Disp = CalculateRelativeDisplacement<int8_t>((uintptr_t)CurIns->address, TrampolineEnd, CurIns->size); //set relative jmp to go to our absolute
 		*(int8_t*)(CurIns->address + DispOffset) = Disp;
 		(*CodeSize) += GetJMPSize();
 	}
 	else if (DispType == ASMHelper::DISP::D_INT16) {
 		int16_t Disp = Disp = m_ASMInfo.GetDisplacement<int16_t>(CurIns->bytes, DispOffset);
-		uintptr_t OriginalDestination = CurIns->address + (Disp - (To - From)) + CurIns->size;
+		uintptr_t OriginalDestination = (uintptr_t)CurIns->address + (Disp - (To - From)) + CurIns->size;
 		WriteJMP(TrampolineEnd, OriginalDestination);
-		Disp = CalculateRelativeDisplacement<int16_t>(CurIns->address, TrampolineEnd, CurIns->size);
+		Disp = CalculateRelativeDisplacement<int16_t>((uintptr_t)CurIns->address, TrampolineEnd, CurIns->size);
 		*(int16_t*)(CurIns->address + DispOffset) = Disp;
 		(*CodeSize) += GetJMPSize();
 	}
 	else if (DispType == ASMHelper::DISP::D_INT32) {
 		int32_t Disp = Disp = m_ASMInfo.GetDisplacement<int32_t>(CurIns->bytes, DispOffset);
-		uintptr_t OriginalDestination = CurIns->address + (Disp - (To - From)) + CurIns->size;
+		uintptr_t OriginalDestination = (uintptr_t)CurIns->address + (Disp - (To - From)) + CurIns->size;
 		WriteJMP(TrampolineEnd, OriginalDestination);
-		Disp = CalculateRelativeDisplacement<int32_t>(CurIns->address, TrampolineEnd, CurIns->size);
+		Disp = CalculateRelativeDisplacement<int32_t>((uintptr_t)CurIns->address, TrampolineEnd, CurIns->size);
 		*(int32_t*)(CurIns->address + DispOffset) = Disp;
 		(*CodeSize) += GetJMPSize();
 	}

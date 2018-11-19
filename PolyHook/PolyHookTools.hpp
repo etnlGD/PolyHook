@@ -167,7 +167,7 @@ namespace PLH {
 
 			//Start at pStart, search 2GB around it (up/down depending on Delta)
 			MEMORY_BASIC_INFORMATION mbi;
-			for (uintptr_t Addr = (uintptr_t)pStart; Comparator(Delta, Addr, (uintptr_t)pStart + Delta); Addr = Incrementor(Delta, mbi))
+			for (uintptr_t Addr = (uintptr_t)pStart; Comparator(Delta, Addr, (uintptr_t)(pStart + Delta)); Addr = Incrementor(Delta, mbi))
 			{
 				if (!VirtualQuery((LPCVOID)Addr, &mbi, sizeof(mbi)))
 					break;
